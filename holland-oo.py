@@ -299,11 +299,14 @@ class Population:
             chromossome.addAge()
 
     def deathByAge(self):
-        for chromossome in self.chromossomes:
-            #print(f'atual -> ' + str(chromossome))
-            if chromossome.age > chromossome.lifeTime:
-                #print(f'matando -> ' + str(chromossome))
-                self.chromossomes.remove(chromossome)
+        survivors = []
+        
+        for i in range(len(self.chromossomes)):
+            if self.chromossomes[i].age <= self.chromossomes[i].lifeTime:
+                survivors.append(self.chromossomes[i])
+                
+        self.chromossomes.clear()
+        self.chromossomes = survivors
 
     def stopCondition(self):
         return self.chromossomes[0].adaptation == 4
