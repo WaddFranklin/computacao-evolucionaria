@@ -7,15 +7,19 @@ class Chromossome:
 
     SIZE = 8
 
-    def __init__(self, chromossome: list = None) -> None:
+    def __init__(self, chromossome: list = None, lifeTime: int = 0) -> None:
         if chromossome == None:
             self.shape = np.random.randint(0, 2, (self.SIZE,))
             self.adaptation = 0
             self.fitness()
+            self.age = 0
+            self.lifeTime = lifeTime
         elif len(chromossome) == self.SIZE:
             self.shape = np.array(chromossome)
             self.adaptation = 0
             self.fitness()
+            self.age = 0
+            self.lifeTime = lifeTime
         else:
             print(f'Chromossome\'s lenght is not compatible!')
             exit()
@@ -26,7 +30,7 @@ class Chromossome:
             chromossome_string += str(i) + ' '
         chromossome_string += ']'
 
-        return chromossome_string.replace(' ]', ']') + f' -> {self.adaptation}'
+        return chromossome_string.replace(' ]', ']') + f' -> {self.adaptation} | age: {self.age}/{self.lifeTime}'
 
     def fitness(self) -> None:
         self.adaptation = 0
@@ -35,19 +39,29 @@ class Chromossome:
                 self.adaptation += 1
                 i += 2
 
+    def addAge(self):
+        self.age += 1
+
 
 class Population:
 
     SIZE = 10
-    OFFSET = 5
-    CROSSOVER_RATE = 0.4
-    MUTATION_RATE = 0.1
-    INVERTION_RATE = 0.1
+    OFFSET = 5            # n | n < SIZE
+    EVOLUTION_RATE = 1    # 0 - 10
+    CROSSOVER_RATE = 0.4  # 0 - 1
+    MUTATION_RATE = 0.1   # 0 - 1
+    INVERTION_RATE = 0.1  # 0 - 1
     ROULETTE_SIZE = 10
 
     def __init__(self) -> None:
         self.chromossomes = self.generate()
         self.offspring = []
+        self.minLifeTime = 999999
+        self.minAdaptation = 999999
+        self.maxAdaptation = -999999
+        self.setMinLifeTime()
+        self.setMinAdaptation()
+        self.setMaxAdaptation()
 
     def __str__(self) -> str:
         population_string = f'--- Population ----------------------\n'
@@ -56,14 +70,39 @@ class Population:
             population_string += f'{count} - ' + str(chromossome) + '\n'
             count += 1
 
+        population_string += f'minLifeTime: {self.minLifeTime}\n'
+        population_string += f'minAdaptation: {self.minAdaptation}\n'
+        population_string += f'maxAdaptation: {self.maxAdaptation}\n'
+
         return population_string
 
     def generate(self) -> list:
         chromossomes = []
         for _ in range(self.SIZE):
-            chromossomes.append(Chromossome())
+            lifeTime = np.random.randint(1, 5)
+            chromossomes.append(Chromossome(lifeTime=lifeTime))
 
         return chromossomes
+
+    def setMinLifeTime(self) -> None:
+        for chromossome in self.chromossomes:
+            if chromossome.lifeTime < self.minLifeTime:
+                self.minLifeTime = chromossome.lifeTime
+
+    def setMinAdaptation(self) -> None:
+        for chromossome in self.chromossomes:
+            if chromossome.adaptation < self.minAdaptation:
+                self.minAdaptation = chromossome.adaptation
+
+    def setMaxAdaptation(self) -> None:
+        for chromossome in self.chromossomes:
+            if chromossome.adaptation > self.maxAdaptation:
+                self.maxAdaptation = chromossome.adaptation
+
+    def updateHyperParameters(self):
+        self.setMinLifeTime()
+        self.setMinAdaptation()
+        self.setMaxAdaptation()
 
     def sort(self, order='desc') -> None:
         i = 0
@@ -93,11 +132,18 @@ class Population:
                     desc2 = list(itertools.chain(
                         self.chromossomes[j].shape[:cut], self.chromossomes[i].shape[cut:]))
 
-                    print(desc1)
-                    print(desc2)
+                    chromossome1 = Chromossome(desc1)
+                    chromossome2 = Chromossome(desc2)
+                    chromossome1.lifeTime = self.calculateLifeTime(
+                        chromossome1.adaptation)
+                    chromossome2.lifeTime = self.calculateLifeTime(
+                        chromossome2.adaptation)
+                    
+                    print(chromossome1)
+                    print(chromossome2)
 
-                    self.offspring.append(Chromossome(desc1))
-                    self.offspring.append(Chromossome(desc2))
+                    self.offspring.append(chromossome1)
+                    self.offspring.append(chromossome2)
 
     def mutation(self) -> None:
         for i in range(self.OFFSET):
@@ -111,7 +157,12 @@ class Population:
                             descendant[j] = 1
                         else:
                             descendant[j] = 0
-                self.offspring.append(Chromossome(list(descendant)))
+
+                chromossome = Chromossome(list(descendant))
+                chromossome.lifeTime = self.calculateLifeTime(
+                    chromossome.adaptation)
+
+                self.offspring.append(chromossome)
 
     def inversion(self) -> None:
         for n in range(self.OFFSET):
@@ -126,7 +177,17 @@ class Population:
                 print(f'pivos: {p1} e {p2}')
                 descendant = list(itertools.chain(descendant[:p1], reversed(
                     descendant[p1:p2+1]), descendant[p2+1:]))
-                self.offspring.append(Chromossome(descendant))
+
+                chromossome = Chromossome(descendant)
+                chromossome.lifeTime = self.calculateLifeTime(
+                    chromossome.adaptation)
+                
+                print(f'descendant -> ' + str(chromossome))
+
+                self.offspring.append(chromossome)
+
+    def calculateLifeTime(self, adaptation: int) -> int:
+        return int(self.minLifeTime + 2*self.EVOLUTION_RATE*((adaptation - self.minAdaptation)/(self.maxAdaptation - self.minAdaptation)))
 
     def showOffspring(self) -> None:
         count = 1
@@ -151,7 +212,7 @@ class Population:
         elif selectionMode == 'roullete':
             self.roulette()
         elif selectionMode == 'lifetime':
-            pass
+            self.lifeTime()
         else:
             print(f'Invalid selection mode!')
             exit()
@@ -226,6 +287,24 @@ class Population:
 
         return drawn
 
+    def lifeTime(self):
+        self.merge()
+        self.addAgeAll()
+        self.deathByAge()
+        self.updateHyperParameters()
+        self.sort()
+
+    def addAgeAll(self) -> None:
+        for chromossome in self.chromossomes:
+            chromossome.addAge()
+
+    def deathByAge(self):
+        for chromossome in self.chromossomes:
+            #print(f'atual -> ' + str(chromossome))
+            if chromossome.age > chromossome.lifeTime:
+                #print(f'matando -> ' + str(chromossome))
+                self.chromossomes.remove(chromossome)
+
     def stopCondition(self):
         return self.chromossomes[0].adaptation == 4
 
@@ -241,4 +320,4 @@ class Population:
 
 
 p = Population()
-p.run(selectionMode='roullete')
+p.run(selectionMode='lifetime')
