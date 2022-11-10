@@ -1,9 +1,5 @@
 import numpy as np
 
-'''
-    custo ->  n * (lucro - agua * preco)
-'''
-
 farms = {
     0: {'cultivated': 40, 'avaliable': 180},
     1: {'cultivated': 65, 'avaliable': 220},
@@ -17,17 +13,25 @@ cultivation = {
 }
 
 
+class Color:
+    SUCCESS = '\033[92m'  # green
+    WARNING = '\033[93m'  # yellow
+    DANGER = '\033[91m'   # red
+    RESET = '\033[0m'     # default
+
+
 class Chromosome:
-    
+
     CHROMOSSOME_DIMENSION = {'rows': 3, 'cols': 3}
 
     def __init__(self, shape: list = []) -> None:
         if len(shape) == 0:
-            self.shape = np.random.randint(0, 2, (self.CHROMOSSOME_DIMENSION['rows'], self.CHROMOSSOME_DIMENSION['cols']))
+            self.shape = np.random.randint(
+                0, 2, (self.CHROMOSSOME_DIMENSION['rows'], self.CHROMOSSOME_DIMENSION['cols']))
         else:
             self.shape = np.array(shape)
         self.adaptation = self.fitness()
-        
+
     def __str__(self) -> str:
         return f'{str(self.shape)} -> adaptation: {self.adaptation}'
 
@@ -48,7 +52,7 @@ class Chromosome:
 class Population:
 
     POPULATION_SIZE = 10
-    MAX_AGES = 100000
+    MAX_AGES = 50000
     OFFSET = 5
     CROSSOVER_RATE = 0.5
     MUTATION_RATE = 0.75
@@ -91,7 +95,7 @@ class Population:
                       culture[2] * cultivation[2]['cultivated'])
         # # print(f'cultivated: {cultivated} | avaliable: {avaliable}')
         return (cultivated < avaliable)
-    
+
     def sort(self, order='desc') -> None:
         i = 0
         for i in range(len(self.chromosomes) - 1):
@@ -110,12 +114,14 @@ class Population:
                     # print('Entrou | {} <-> {}'.format(i+1, j+1))
                     # cut = np.random.randint(0, Chromosome.CHROMOSSOME_DIMENSION['rows'])
 
-                    desc1 = [self.chromosomes[i].shape[0], self.chromosomes[j].shape[1], self.chromosomes[i].shape[2]]
-                    desc2 = [self.chromosomes[j].shape[0], self.chromosomes[i].shape[1], self.chromosomes[j].shape[2]]
+                    desc1 = [self.chromosomes[i].shape[0],
+                             self.chromosomes[j].shape[1], self.chromosomes[i].shape[2]]
+                    desc2 = [self.chromosomes[j].shape[0],
+                             self.chromosomes[i].shape[1], self.chromosomes[j].shape[2]]
 
                     chromosome1 = Chromosome(desc1)
                     chromosome2 = Chromosome(desc2)
-                    
+
                     # chromosome1.lifeTime = self.calculateLifeTime(chromosome1.adaptation)
                     # chromosome2.lifeTime = self.calculateLifeTime(chromosome2.adaptation)
 
@@ -133,13 +139,13 @@ class Population:
                 # print(f'mutation on {i+1}o chromosome!')
                 descendant = self.chromosomes[i].shape.copy()
                 # print(descendant)
-                
+
                 for row in descendant:
                     for j in range(Chromosome.CHROMOSSOME_DIMENSION['cols']):
                         if np.random.randint(2) == 1:
                             # print(f'mutation in gen[{j}]')
                             row[j] = np.random.randint(6)
-                
+
                 # print(descendant)
                 chromosome = Chromosome(descendant)
                 # chromosome.lifeTime = self.calculateLifeTime(
@@ -153,13 +159,13 @@ class Population:
                 # print(self.chromosomes[n])
                 # print(f'Inverteu no {n+1}o cromossomo!')
                 descendant = np.transpose(self.chromosomes[n].shape.copy())
-                
+
                 chromosome = Chromosome(descendant)
                 # chromossome.lifeTime = self.calculateLifeTime(
                 #     chromossome.adaptation)
 
                 # print(f'descendant -> ' + str(chromosome))
-                
+
                 if not self.isMonster(chromosome):
                     self.offspring.append(chromosome)
 
@@ -169,7 +175,7 @@ class Population:
         else:
             # print(f'Invalid selection mode!')
             exit()
-            
+
     def elitism(self) -> None:
         self.merge()
         # print('*************** lista depois do merge *************************************')
@@ -179,13 +185,13 @@ class Population:
         # print(self)
         while len(self.chromosomes) > self.POPULATION_SIZE:
             self.chromosomes.pop()
-            
+
     def merge(self) -> None:
         # print(f'--- Merging ...')
         while not self.isEmpty(self.offspring):
             # print('---------- MERGING -------------------------------------')
             self.chromosomes.append(self.offspring.pop())
-            
+
     def isEmpty(self, ChromosomeList) -> bool:
         return len(ChromosomeList) == 0
 
@@ -193,13 +199,26 @@ class Population:
         aux = self.chromosomes[i]
         self.chromosomes[i] = self.chromosomes[j]
         self.chromosomes[j] = aux
-        
+
     def stopCondition(self):
         return self.age > self.MAX_AGES
-    
+
     def incrementAge(self):
         self.age += 1
-    
+
+    def printSolution(self, chromosome: Chromosome) -> None:
+        c = chromosome.shape
+        print(f'\n{Color.WARNING}+' + '-'*35 + '+')
+        print('|        |  corn  |  rice  |  bean  |')
+        print('+' + '-'*35 + '+')
+        print(f'| farm 1 |    {c[0,0]}   |    {c[0,1]}   |    {c[0,2]}   |')
+        print('+' + '-'*35 + '+')
+        print(f'| farm 2 |    {c[1,0]}   |    {c[1,1]}   |    {c[1,2]}   |')
+        print('+' + '-'*35 + '+')
+        print(f'| farm 3 |    {c[2,0]}   |    {c[2,1]}   |    {c[2,2]}   |')
+        print('+' + '-'*35 + f'+{Color.SUCCESS}')
+        print(f'Total profit: {chromosome.adaptation}{Color.RESET}')
+
     def run(self, selectionMode: str = 'elitism') -> None:
         while not self.stopCondition():
             self.sort()
@@ -209,9 +228,9 @@ class Population:
             self.selection(selectionMode)
             self.incrementAge()
             times = (self.age / self.MAX_AGES) * 100
-            
-            print(f'\rAGE: {self.age} [' + '|'*int(times) + ' '*int(100 - times) + ']', end='')
-        print(f'\nProblem\'s solution:\n' + str(self.chromosomes[0]))
+            print(f'\rAGE: ' + "{:>7}".format(self.age) + ' [' + f'{Color.SUCCESS}█'*int(
+                times) + ' '*int(100 - times) + f'{Color.RESET}]', end='')
+        self.printSolution(self.chromosomes[0])
 
 
 p = Population()
