@@ -5,9 +5,9 @@ import itertools
 
 class Chromossome:
 
-    # [0, 1, 0, 0, 1, 0, 1, 0]
+    # [0, 1, 0, 1, 0, 1, 0, 1]
 
-    SIZE = 16
+    SIZE = 8
 
     def __init__(self, chromossome: list = None, lifeTime: int = 0) -> None:
         if chromossome == None:
