@@ -5,7 +5,9 @@ import itertools
 
 class Chromossome:
 
-    SIZE = 8
+    # [0, 1, 0, 0, 1, 0, 1, 0]
+
+    SIZE = 16
 
     def __init__(self, chromossome: list = None, lifeTime: int = 0) -> None:
         if chromossome == None:
@@ -30,7 +32,7 @@ class Chromossome:
             chromossome_string += str(i) + ' '
         chromossome_string += ']'
 
-        return chromossome_string.replace(' ]', ']') + f' -> {self.adaptation} | age: {self.age}/{self.lifeTime}'
+        return chromossome_string.replace(' ]', ']') + f' -> {self.adaptation}'
 
     def fitness(self) -> None:
         self.adaptation = 0
@@ -138,7 +140,7 @@ class Population:
                         chromossome1.adaptation)
                     chromossome2.lifeTime = self.calculateLifeTime(
                         chromossome2.adaptation)
-                    
+
                     print(chromossome1)
                     print(chromossome2)
 
@@ -181,7 +183,7 @@ class Population:
                 chromossome = Chromossome(descendant)
                 chromossome.lifeTime = self.calculateLifeTime(
                     chromossome.adaptation)
-                
+
                 print(f'descendant -> ' + str(chromossome))
 
                 self.offspring.append(chromossome)
@@ -300,16 +302,16 @@ class Population:
 
     def deathByAge(self):
         survivors = []
-        
+
         for i in range(len(self.chromossomes)):
             if self.chromossomes[i].age <= self.chromossomes[i].lifeTime:
                 survivors.append(self.chromossomes[i])
-                
+
         self.chromossomes.clear()
         self.chromossomes = survivors
 
     def stopCondition(self):
-        return self.chromossomes[0].adaptation == 4
+        return self.chromossomes[0].adaptation == Chromossome.SIZE / 2
 
     def run(self, selectionMode: str = 'elitism') -> None:
         while not self.stopCondition():
